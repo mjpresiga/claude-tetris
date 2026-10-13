@@ -20,7 +20,7 @@ Three files: `index.html` (DOM + two canvases), `style.css`, `game.js` (all logi
 
 - Canvas sizes are hardcoded in `index.html` (`#board` 300×600, `#next-canvas` 120×120) and must match `COLS*BLOCK` × `ROWS*BLOCK` in `game.js` if those constants change.
 - State lives in module-level `let` vars (`board`, `current`, `next`, `score`, …) reset by `init()`; restart button calls `init()`.
-- Board cells: `0` empty, `1–7` index into both `COLORS` and `PIECES` (same index = piece type).
+- Board cells: `0` empty, `1–8` index into both `COLORS` and `PIECES` (same index = piece type).
 - Flow: `loop` (rAF, accumulates `dropAccum` vs `dropInterval`) → `lockPiece` = `merge` → `clearLines` → `spawn`. `spawn` calls `endGame` if new piece collides. Hard/soft drop and key handling are in the single `keydown` listener at the bottom.
 - Pause/game over cancel the rAF (`cancelAnimationFrame(animId)`); `togglePause` restarts the loop manually and resets `lastTime`.
 - Rotation: `rotateCW` + simple horizontal kick list `[0,-1,1,-2,2]` in `tryRotate` (not SRS).
