@@ -39,6 +39,9 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const themeBtn = document.getElementById('theme-toggle');
+const THEME_KEY = 'tetris-theme';
+let gridColor = '#22222e';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
@@ -169,7 +172,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -216,6 +219,23 @@ function drawNext() {
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+}
+
+function applyTheme(theme, persist) {
+  document.documentElement.dataset.theme = theme;
+  const isLight = theme === 'light';
+  themeBtn.textContent = isLight ? 'Tema: claro' : 'Tema: oscuro';
+  themeBtn.setAttribute('aria-pressed', String(isLight));
+  gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || gridColor;
+  if (persist) {
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* localStorage no disponible */ }
+  }
+  // en pausa o game over el loop no redibuja
+  if (current && next) { draw(); drawNext(); }
+}
+
+function loadTheme() {
+  try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) { return 'dark'; }
 }
 
 function endGame() {
@@ -301,4 +321,11 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+themeBtn.addEventListener('click', () => {
+  const light = document.documentElement.dataset.theme === 'light';
+  applyTheme(light ? 'dark' : 'light', true);
+  themeBtn.blur(); // evita que Space active el botón
+});
+
+applyTheme(loadTheme(), false);
 init();
