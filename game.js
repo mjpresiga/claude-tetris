@@ -14,7 +14,20 @@ const COLORS = [
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
   '#b0bec5', // N - tuerca (gris metálico)
+  '#ffffff', // power-up (no está en PIECES)
 ];
+
+const POWERS = {
+  bomb:    { icon: '💣', name: 'Bomba' },
+  ray:     { icon: '⚡', name: 'Rayo' },
+  tint:    { icon: '🎨', name: 'Tinte' },
+  gravity: { icon: '⤓', name: 'Gravedad' },
+  freeze:  { icon: '❄', name: 'Congelar' },
+};
+const POWER_TYPE = 9;
+const POWER_EVERY = 2;
+const POWER_CHANCE = 0.1; // probabilidad extra por pieza
+const FREEZE_MS = 5000;
 
 const PIECES = [
   null,
@@ -41,11 +54,13 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const powerEl = document.getElementById('power');
 const themeBtn = document.getElementById('theme-toggle');
 const THEME_KEY = 'tetris-theme';
 let gridColor = '#22222e';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let powerPending, freezeLeft, lastPower;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -55,6 +70,18 @@ function randomPiece() {
   const type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+}
+
+function randomPower() {
+  const keys = Object.keys(POWERS);
+  const power = keys[Math.floor(Math.random() * keys.length)];
+  return { type: POWER_TYPE, power, shape: [[POWER_TYPE]], x: Math.floor(COLS / 2), y: 0 };
+}
+
+function newPiece() {
+  const piece = powerPending || Math.random() < POWER_CHANCE ? randomPower() : randomPiece();
+  powerPending = false;
+  return piece;
 }
 
 function collide(shape, ox, oy) {
@@ -98,8 +125,54 @@ function merge() {
         board[current.y + r][current.x + c] = current.shape[r][c];
 }
 
+function applyPower(p) {
+  const { x, y } = p;
+  switch (p.power) {
+    case 'bomb':
+      for (let r = y - 1; r <= y + 1; r++)
+        for (let c = x - 1; c <= x + 1; c++)
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) board[r][c] = 0;
+      break;
+    case 'ray':
+      board[y].fill(0);
+      for (let r = 0; r < ROWS; r++) board[r][x] = 0;
+      break;
+    case 'tint': {
+      let target = y + 1 < ROWS ? board[y + 1][x] : 0;
+      if (!target) {
+        const counts = new Array(COLORS.length).fill(0);
+        for (const row of board) for (const v of row) if (v) counts[v]++;
+        const max = Math.max(...counts);
+        target = max > 0 ? counts.indexOf(max) : 0;
+      }
+      if (target)
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++)
+            if (board[r][c] === target) board[r][c] = 0;
+      break;
+    }
+    case 'gravity':
+      for (let c = 0; c < COLS; c++) {
+        let write = ROWS - 1;
+        for (let r = ROWS - 1; r >= 0; r--) {
+          if (board[r][c]) {
+            const v = board[r][c];
+            board[r][c] = 0;
+            board[write--][c] = v;
+          }
+        }
+      }
+      break;
+    case 'freeze':
+      freezeLeft = FREEZE_MS;
+      break;
+  }
+  lastPower = p.power;
+}
+
 function clearLines() {
   let cleared = 0;
+  const prevLines = lines;
   for (let r = ROWS - 1; r >= 0; r--) {
     if (board[r].every(v => v !== 0)) {
       board.splice(r, 1);
@@ -113,6 +186,7 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    if (Math.floor(lines / POWER_EVERY) > Math.floor(prevLines / POWER_EVERY)) powerPending = true;
     updateHUD();
   }
 }
@@ -141,14 +215,16 @@ function softDrop() {
 }
 
 function lockPiece() {
-  merge();
+  if (current.power) applyPower(current);
+  else merge();
   clearLines();
+  updateHUD();
   spawn();
 }
 
 function spawn() {
   current = next;
-  next = randomPiece();
+  next = newPiece();
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -159,6 +235,19 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  if (freezeLeft > 0) powerEl.textContent = `${POWERS.freeze.icon} ${Math.ceil(freezeLeft / 1000)}s`;
+  else if (lastPower) powerEl.textContent = `${POWERS[lastPower].icon} ${POWERS[lastPower].name}`;
+  else powerEl.textContent = '—';
+}
+
+function drawPowerIcon(context, x, y, size, power, alpha) {
+  context.globalAlpha = alpha ?? 1;
+  context.font = `${Math.floor(size * 0.6)}px sans-serif`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = '#000';
+  context.fillText(POWERS[power].icon, x * size + size / 2, y * size + size / 2 + 1);
+  context.globalAlpha = 1;
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -205,11 +294,13 @@ function draw() {
     for (let c = 0; c < current.shape[r].length; c++)
       if (current.shape[r][c])
         drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
+  if (current.power) drawPowerIcon(ctx, current.x, gy, BLOCK, current.power, 0.4);
 
   // current piece
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
+  if (current.power) drawPowerIcon(ctx, current.x, current.y, BLOCK, current.power);
 }
 
 function drawNext() {
@@ -221,6 +312,7 @@ function drawNext() {
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+  if (next.power) drawPowerIcon(nextCtx, offX, offY, NB, next.power);
 }
 
 function applyTheme(theme, persist) {
@@ -265,7 +357,13 @@ function togglePause() {
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
-  dropAccum += dt;
+  if (freezeLeft > 0) {
+    freezeLeft = Math.max(0, freezeLeft - dt);
+    dropAccum = 0;
+    updateHUD();
+  } else {
+    dropAccum += dt;
+  }
   if (dropAccum >= dropInterval) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
@@ -288,6 +386,9 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  powerPending = false;
+  freezeLeft = 0;
+  lastPower = null;
   lastTime = performance.now();
   next = randomPiece();
   spawn();

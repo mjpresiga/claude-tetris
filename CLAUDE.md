@@ -25,4 +25,5 @@ Three files: `index.html` (DOM + two canvases), `style.css`, `game.js` (all logi
 - Pause/game over cancel the rAF (`cancelAnimationFrame(animId)`); `togglePause` restarts the loop manually and resets `lastTime`.
 - Rotation: `rotateCW` + simple horizontal kick list `[0,-1,1,-2,2]` in `tryRotate` (not SRS).
 - Tema claro/oscuro: colores en variables CSS (`:root`/`[data-theme="dark"]` y `[data-theme="light"]` en `style.css`). `applyTheme` en `game.js` fija `data-theme`, lee `--grid` para `drawGrid` (`gridColor`), persiste en `localStorage` (`tetris-theme`) y redibuja. Por defecto: oscuro.
+- Power-ups: cada `POWER_EVERY` (2) líneas `clearLines` marca `powerPending` (además `POWER_CHANCE` 10 % por pieza); `newPiece` genera entonces `randomPower` (1×1, `type 9`, campo `power`, fuera de `PIECES`). `lockPiece` llama `applyPower` en vez de `merge`. `freezeLeft` (ms) detiene la caída automática en `loop`. HUD `#power`.
 - Scoring/speed: `LINE_SCORES[cleared] * level`; hard drop +2/cell, soft drop +1/row; level = `lines/10 + 1`; `dropInterval = max(100, 1000 - (level-1)*90)`.

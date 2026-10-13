@@ -35,6 +35,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 
 - Tablero de **10 × 20** celdas.
 - Las **7 piezas estándar** (I, O, T, S, Z, J, L) con colores diferenciados, más la pieza especial **tuerca** (N, 3×3 con el centro vacío).
+- **Power-ups**: cada 2 líneas (y con 10 % de probabilidad en cualquier pieza) la siguiente pieza es un bloque 1×1 con efecto al fijarse: 💣 Bomba (área 3×3), ⚡ Rayo (fila + columna), 🎨 Tinte (elimina todos los bloques de un color), ⤓ Gravedad (compacta huecos), ❄ Congelar (pausa la caída 5 s).
 - **Rotación** con _wall kicks_ básicos (pequeños desplazamientos para que la pieza pueda rotar pegada a la pared).
 - **Soft drop** (bajada acelerada) y **hard drop** (caída instantánea).
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
