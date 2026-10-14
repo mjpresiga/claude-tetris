@@ -4,7 +4,8 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
+// Paletas por skin (índices 1–9: I,O,T,S,Z,J,L,N, power-up)
+const RETRO_COLORS = [
   null,
   '#4dd0e1', // I - cyan
   '#ffd54f', // O - yellow
@@ -16,6 +17,93 @@ const COLORS = [
   '#b0bec5', // N - tuerca (gris metálico)
   '#ffffff', // power-up (no está en PIECES)
 ];
+const NEON_COLORS = [
+  null,
+  '#00f0ff', '#fff200', '#d400ff', '#39ff14', '#ff2a4d', '#2f6bff', '#ff8a00', '#c0d0ff', '#ffffff',
+];
+const PASTEL_COLORS = [
+  null,
+  '#a8e6ef', '#fff1b8', '#d9b8f0', '#b8e6c1', '#f5b8b8', '#bcd9f7', '#fcd5a8', '#d3dde2', '#ffffff',
+];
+const PIXEL_COLORS = [
+  null,
+  '#29b6f6', '#fbc02d', '#8e44ad', '#43a047', '#e53935', '#3f51b5', '#fb8c00', '#78909c', '#f5f5f5',
+];
+
+// Dibujo de bloque por skin: (context, px, py, color, size) con px/py en píxeles
+function drawBlockRetro(context, px, py, color, size) {
+  context.fillStyle = color;
+  context.fillRect(px + 1, py + 1, size - 2, size - 2);
+  context.fillStyle = 'rgba(255,255,255,0.12)';
+  context.fillRect(px + 1, py + 1, size - 2, 4);
+}
+
+function drawBlockNeon(context, px, py, color, size) {
+  context.shadowColor = color;
+  context.shadowBlur = 12;
+  context.fillStyle = color;
+  context.fillRect(px + 3, py + 3, size - 6, size - 6);
+  context.shadowBlur = 0;
+  context.strokeStyle = 'rgba(255,255,255,0.75)';
+  context.lineWidth = 1;
+  context.strokeRect(px + 3.5, py + 3.5, size - 7, size - 7);
+}
+
+function roundRectPath(context, x, y, w, h, r) {
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.lineTo(x + w - r, y);
+  context.quadraticCurveTo(x + w, y, x + w, y + r);
+  context.lineTo(x + w, y + h - r);
+  context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  context.lineTo(x + r, y + h);
+  context.quadraticCurveTo(x, y + h, x, y + h - r);
+  context.lineTo(x, y + r);
+  context.quadraticCurveTo(x, y, x + r, y);
+  context.closePath();
+}
+
+function drawBlockPastel(context, px, py, color, size) {
+  roundRectPath(context, px + 2, py + 2, size - 4, size - 4, size * 0.3);
+  context.fillStyle = color;
+  context.fill();
+  context.strokeStyle = 'rgba(90,80,110,0.45)';
+  context.lineWidth = 1.5;
+  context.stroke();
+  context.fillStyle = 'rgba(255,255,255,0.35)';
+  roundRectPath(context, px + 6, py + 5, size - 12, 4, 2);
+  context.fill();
+}
+
+function drawBlockPixel(context, px, py, color, size) {
+  const u = Math.max(2, Math.floor(size / 6)); // "píxel" de la textura
+  const x0 = px + 1, y0 = py + 1, w = size - 2;
+  context.fillStyle = color;
+  context.fillRect(x0, y0, w, w);
+  // luz arriba/izquierda, sombra abajo/derecha
+  context.fillStyle = 'rgba(255,255,255,0.45)';
+  context.fillRect(x0, y0, w, u);
+  context.fillRect(x0, y0, u, w);
+  context.fillStyle = 'rgba(0,0,0,0.35)';
+  context.fillRect(x0, y0 + w - u, w, u);
+  context.fillRect(x0 + w - u, y0, u, w);
+  // patrón de damero en el interior
+  context.fillStyle = 'rgba(0,0,0,0.14)';
+  for (let i = 1; i < 4; i++)
+    for (let j = 1; j < 4; j++)
+      if ((i + j) % 2 === 0) context.fillRect(x0 + i * u, y0 + j * u, u, u);
+}
+
+const SKINS = {
+  retro:  { name: 'Retro',     colors: RETRO_COLORS,  drawBlock: drawBlockRetro },
+  neon:   { name: 'Neon',      colors: NEON_COLORS,   drawBlock: drawBlockNeon },
+  pastel: { name: 'Pastel',    colors: PASTEL_COLORS, drawBlock: drawBlockPastel },
+  pixel:  { name: 'Pixel art', colors: PIXEL_COLORS,  drawBlock: drawBlockPixel },
+};
+const SKIN_ORDER = ['retro', 'neon', 'pastel', 'pixel'];
+const SKIN_KEY = 'tetris-skin';
+let skin = SKINS.retro;
+let COLORS = skin.colors;
 
 const POWERS = {
   bomb:    { icon: '💣', name: 'Bomba' },
@@ -56,6 +144,7 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const powerEl = document.getElementById('power');
 const themeBtn = document.getElementById('theme-toggle');
+const skinBtn = document.getElementById('skin-toggle');
 const THEME_KEY = 'tetris-theme';
 let gridColor = '#22222e';
 
@@ -252,14 +341,10 @@ function drawPowerIcon(context, x, y, size, power, alpha) {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  context.save();
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  skin.drawBlock(context, x * size, y * size, COLORS[colorIndex], size);
+  context.restore(); // restaura globalAlpha y shadowBlur
 }
 
 function drawGrid() {
@@ -315,12 +400,37 @@ function drawNext() {
   if (next.power) drawPowerIcon(nextCtx, offX, offY, NB, next.power);
 }
 
+function readGridColor() {
+  gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || gridColor;
+}
+
+function applySkin(id, persist) {
+  if (!SKINS[id]) id = 'retro';
+  skin = SKINS[id];
+  COLORS = skin.colors;
+  document.documentElement.dataset.skin = id;
+  skinBtn.textContent = `Skin: ${skin.name}`;
+  readGridColor();
+  if (persist) {
+    try { localStorage.setItem(SKIN_KEY, id); } catch (e) { /* localStorage no disponible */ }
+  }
+  // en pausa o game over el loop no redibuja
+  if (current && next) { draw(); drawNext(); }
+}
+
+function loadSkin() {
+  try {
+    const id = localStorage.getItem(SKIN_KEY);
+    return SKINS[id] ? id : 'retro';
+  } catch (e) { return 'retro'; }
+}
+
 function applyTheme(theme, persist) {
   document.documentElement.dataset.theme = theme;
   const isLight = theme === 'light';
   themeBtn.textContent = isLight ? 'Tema: claro' : 'Tema: oscuro';
   themeBtn.setAttribute('aria-pressed', String(isLight));
-  gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || gridColor;
+  readGridColor();
   if (persist) {
     try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* localStorage no disponible */ }
   }
@@ -431,5 +541,12 @@ themeBtn.addEventListener('click', () => {
   themeBtn.blur(); // evita que Space active el botón
 });
 
+skinBtn.addEventListener('click', () => {
+  const id = document.documentElement.dataset.skin || 'retro';
+  applySkin(SKIN_ORDER[(SKIN_ORDER.indexOf(id) + 1) % SKIN_ORDER.length], true);
+  skinBtn.blur(); // evita que Space active el botón
+});
+
 applyTheme(loadTheme(), false);
+applySkin(loadSkin(), false);
 init();

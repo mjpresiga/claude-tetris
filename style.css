@@ -145,8 +145,9 @@ kbd {
   color: var(--kbd-text);
 }
 
-/* ---- Selector de tema ---- */
-#theme-toggle {
+/* ---- Selector de tema y skin ---- */
+#theme-toggle,
+#skin-toggle {
   background: var(--kbd-bg);
   color: var(--text);
   border: 1px solid var(--kbd-border);
@@ -157,7 +158,8 @@ kbd {
   cursor: pointer;
 }
 
-#theme-toggle:hover {
+#theme-toggle:hover,
+#skin-toggle:hover {
   border-color: var(--accent);
 }
 
@@ -214,4 +216,19 @@ kbd {
 
 #restart-btn:hover {
   background: var(--accent-hover);
+}
+
+/* ---- Skin Neon: tableros siempre negros, en ambos temas ---- */
+[data-skin="neon"] {
+  --grid: #1c1c30;
+}
+
+[data-skin="neon"] #board,
+[data-skin="neon"] #next-canvas {
+  background: #000;
+  border-color: #00f0ff;
+}
+
+[data-skin="neon"] #board {
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.45);
 }
