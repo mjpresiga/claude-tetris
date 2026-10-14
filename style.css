@@ -198,7 +198,8 @@ kbd {
   color: var(--accent);
 }
 
-#restart-btn {
+#restart-btn,
+.pause-menu button {
   margin-top: 8px;
   background: var(--accent);
   color: var(--on-accent);
@@ -212,6 +213,64 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+#restart-btn:hover,
+.pause-menu button:hover {
   background: var(--accent-hover);
+}
+
+#restart-btn.hidden { display: none; }
+
+#restart-btn:focus-visible,
+.pause-menu button:focus-visible,
+.pause-menu select:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
+.pause-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 190px;
+}
+
+.pause-menu.hidden { display: none; }
+
+.pause-menu button { margin-top: 0; }
+
+.controls-panel {
+  list-style: none;
+  margin: 0;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.controls-panel.hidden { display: none; }
+
+.level-select {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.level-select select {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 700;
 }
